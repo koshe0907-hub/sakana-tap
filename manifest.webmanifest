@@ -1,0 +1,9 @@
+{
+  "name": "さかなタップ！Ver.2",
+  "short_name": "さかなタップ",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#052d4d",
+  "theme_color": "#052d4d",
+  "description": "魚を集めて育てる水族館ゲーム"
+}

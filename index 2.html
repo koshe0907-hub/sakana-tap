@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#04395f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="さかなタップ">
+<link rel="manifest" href="./manifest.webmanifest">
+<title>さかなタップ！Ver.6</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#042944;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;touch-action:none}
+body{position:fixed;inset:0}
+canvas{display:block;width:100%;height:100%}
+.glass{background:rgba(1,30,52,.68);color:white;border:1px solid rgba(255,255,255,.22);border-radius:18px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.top{position:fixed;z-index:10;top:max(9px,env(safe-area-inset-top));left:8px;right:8px;display:flex;gap:7px;justify-content:space-between;pointer-events:none}
+.brand{padding:9px 12px;min-width:150px}
+.brand b{display:block;font-size:17px}
+.brand small{opacity:.86}
+.stats{display:flex;gap:6px}
+.stat{padding:9px 10px;font-size:13px;font-weight:900;white-space:nowrap}
+.levelWrap{position:fixed;z-index:10;left:10px;top:80px;width:170px;color:#fff;font-size:11px;font-weight:800;text-shadow:0 2px 5px rgba(0,0,0,.4)}
+.bar{height:9px;border-radius:999px;background:rgba(255,255,255,.22);overflow:hidden;margin-bottom:3px}
+.bar>div{height:100%;width:0;background:linear-gradient(90deg,#ffe26c,#ff9b42)}
+.side{position:fixed;z-index:12;left:8px;top:125px;display:grid;gap:6px}
+.side button{width:54px}
+.bottom{position:fixed;z-index:12;left:6px;right:6px;bottom:max(8px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+button{appearance:none;border:1px solid rgba(255,255,255,.26);background:rgba(2,44,72,.8);color:white;border-radius:15px;padding:8px 3px;font-weight:850;font-size:10px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 5px 14px rgba(0,0,0,.18)}
+button:active{transform:scale(.96)}
+button .ico{display:block;font-size:21px;margin-bottom:1px}
+.toast{position:fixed;z-index:50;left:50%;top:21%;transform:translate(-50%,-50%) scale(.9);opacity:0;pointer-events:none;background:rgba(0,29,48,.88);color:white;padding:10px 15px;border-radius:999px;font-weight:850;transition:.18s;white-space:nowrap}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.modal{position:fixed;z-index:40;inset:0;background:rgba(0,18,31,.76);display:none;align-items:flex-end;justify-content:center;padding:8px}
+.modal.open{display:flex}
+.sheet{width:min(740px,100%);max-height:80vh;overflow:auto;background:#f7fbff;border-radius:25px 25px 18px 18px;padding:16px;color:#083650;box-shadow:0 -12px 45px rgba(0,0,0,.3)}
+.sheet h2{margin:0 0 12px;font-size:20px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.card{border:1px solid #cce1ee;border-radius:16px;padding:10px;background:white;min-height:105px}
+.card.locked{filter:grayscale(1);opacity:.48}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#e8f3fa;font-size:10px;font-weight:800}
+.name{font-weight:900;margin-top:7px}
+.small{font-size:11px;color:#60798a;margin-top:3px}
+.action{width:100%;margin-top:14px;background:#0877a8;font-size:15px}
+.reward{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:10px 0}
+.day{background:white;border:1px solid #d5e5ee;border-radius:11px;padding:8px 2px;text-align:center;font-size:10px}
+.day.done{background:#e0f7e7}
+.hero{text-align:center;font-size:44px;margin:10px}
+.shopRow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #e2edf3}
+.install{position:fixed;z-index:15;right:10px;bottom:76px;display:none;background:white;color:#0d5575;border:0;padding:9px 12px;font-size:12px;border-radius:999px}
+@media (min-width:700px){
+  .grid{grid-template-columns:repeat(4,1fr)}
+  .bottom{left:50%;transform:translateX(-50%);width:650px}
+  .side{left:calc(50% - 360px)}
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div class="top">
+  <div class="glass brand"><b>さかなタップ！</b><small>自分だけの水族館をつくろう</small></div>
+  <div class="stats">
+    <div class="glass stat">🪙 <span id="coins">0</span></div>
+    <div class="glass stat">💎 <span id="gems">0</span></div>
+    <div class="glass stat">🐟 <span id="count">0</span></div>
+  </div>
+</div>
+
+<div class="levelWrap">
+  <div class="bar"><div id="xpbar"></div></div>
+  Lv.<span id="level">1</span>　水槽Lv.<span id="tankLevel">1</span>
+</div>
+
+<div class="side">
+  <button id="book"><span class="ico">📖</span>図鑑</button>
+  <button id="mission"><span class="ico">📋</span>任務</button>
+  <button id="daily"><span class="ico">🎉</span>毎日</button>
+  <button id="shop"><span class="ico">🏪</span>店</button>
+  <button id="theme"><span class="ico">🌙</span>背景</button>
+</div>
+
+<div class="bottom">
+  <button id="feed"><span class="ico">🍤</span>エサ</button>
+  <button id="gacha"><span class="ico">🎁</span>ガチャ</button>
+  <button id="upgrade"><span class="ico">⬆️</span>強化</button>
+  <button id="expand"><span class="ico">🏝️</span>拡張</button>
+  <button id="sound"><span class="ico">🔊</span>音</button>
+</div>
+
+<button id="installBtn" class="install">ホーム画面に追加</button>
+<div id="toast" class="toast" aria-live="polite"></div>
+
+<div id="modal" class="modal">
+  <div class="sheet">
+    <h2 id="modalTitle"></h2>
+    <div id="modalBody"></div>
+    <button id="closeModal" class="action">閉じる</button>
+  </div>
+</div>
+
+<script>
+(()=>{
+"use strict";
+const canvas=document.getElementById("game"),ctx=canvas.getContext("2d",{alpha:false});
+const $=id=>document.getElementById(id);
+let W=0,H=0,DPR=1,last=performance.now(),muted=false,audioCtx=null,deferredPrompt=null;
+
+const species=[
+{id:0,name:"カクレクマノミ",rarity:"ノーマル",value:1,body:"#ff7824",accent:"#fff4e9",shape:"clown"},
+{id:1,name:"ナンヨウハギ",rarity:"ノーマル",value:1,body:"#2364d8",accent:"#ffe250",shape:"tang"},
+{id:2,name:"キイロハギ",rarity:"ノーマル",value:2,body:"#f4d832",accent:"#fff7a0",shape:"tang"},
+{id:3,name:"ネオンテトラ",rarity:"ノーマル",value:2,body:"#1b8dcc",accent:"#ff4b4b",shape:"slim"},
+{id:4,name:"ベタ",rarity:"レア",value:6,body:"#284fd6",accent:"#6dc6ff",shape:"betta"},
+{id:5,name:"ミノカサゴ",rarity:"レア",value:8,body:"#d05c38",accent:"#fff0dc",shape:"lion"},
+{id:6,name:"金魚",rarity:"レア",value:10,body:"#f26821",accent:"#ffd09b",shape:"gold"},
+{id:7,name:"フグ",rarity:"スーパーレア",value:18,body:"#cba770",accent:"#fff1ce",shape:"puffer"},
+{id:8,name:"クラゲ",rarity:"スーパーレア",value:22,body:"#ad82f1",accent:"#f5dcff",shape:"jelly"},
+{id:9,name:"ウミガメ",rarity:"伝説",value:35,body:"#419b70",accent:"#9dd8b6",shape:"turtle"},
+{id:10,name:"ジンベエザメ",rarity:"伝説",value:50,body:"#426e8e",accent:"#cbeaf7",shape:"whale"},
+{id:11,name:"黄金の魚",rarity:"幻",value:100,body:"#f4b52d",accent:"#fff4ad",shape:"gold"},
+{id:12,name:"マンタ",rarity:"伝説",value:45,body:"#344b71",accent:"#b8d9f2",shape:"manta"},
+{id:13,name:"イルカ",rarity:"幻",value:90,body:"#4f9ecb",accent:"#d7f2ff",shape:"dolphin"},
+{id:14,name:"深海ルミナ",rarity:"幻",value:120,body:"#3947ff",accent:"#83f4ff",shape:"glow"}
+];
+
+const defaults={
+ coins:250,gems:10,xp:0,level:1,tankLevel:1,upgrade:1,
+ seen:[0,1,2],fish:[],lastSave:Date.now(),lastDaily:"",
+ streak:0,totalTaps:0,missions:{tap:0,gacha:0,feed:0},theme:0
+};
+let state=Object.assign({},defaults,JSON.parse(localStorage.getItem("sakanaV6")||"null")||{});
+state.missions=Object.assign({},defaults.missions,state.missions||{});
+
+let fishes=[],bubbles=[],food=[],sparkles=[],texts=[];
+
+function resize(){
+ DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+ canvas.width=Math.round(W*DPR);canvas.height=Math.round(H*DPR);
+ canvas.style.width=W+"px";canvas.style.height=H+"px";
+ ctx.setTransform(DPR,0,0,DPR,0,0)
+}
+addEventListener("resize",resize);resize();
+
+function save(){
+ state.fish=fishes.map(f=>({s:f.s,x:f.x/W,y:f.y/H,size:f.size,dir:f.dir}));
+ state.lastSave=Date.now();
+ localStorage.setItem("sakanaV6",JSON.stringify(state))
+}
+setInterval(save,2500);
+addEventListener("pagehide",save);
+
+function shade(hex,amt){
+ const c=hex.replace("#",""),n=parseInt(c,16);
+ const r=Math.max(0,Math.min(255,(n>>16)+amt));
+ const g=Math.max(0,Math.min(255,((n>>8)&255)+amt));
+ const b=Math.max(0,Math.min(255,(n&255)+amt));
+ return"#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1)
+}
+
+class Fish{
+ constructor(s,x,y,size,dir){
+  this.s=s;this.x=x??Math.random()*W;this.y=y??(H*.2+Math.random()*H*.62);
+  this.size=size??(32+Math.random()*38);this.dir=dir??(Math.random()<.5?-1:1);
+  this.speed=(34+Math.random()*42)*(1+s*.025)*(1+state.upgrade*.03);
+  this.phase=Math.random()*6.28
+ }
+ update(dt,t){
+  let vx=this.speed*this.dir,vy=Math.sin(t*.002+this.phase)*7;
+  let target=null,near=Infinity;
+  for(const p of food){const dx=p.x-this.x,dy=p.y-this.y,d=dx*dx+dy*dy;if(d<near){near=d;target=p}}
+  if(target&&near<90000){const a=Math.atan2(target.y-this.y,target.x-this.x);vx=Math.cos(a)*this.speed*1.4;vy=Math.sin(a)*this.speed*1.4;this.dir=vx>=0?1:-1}
+  this.x+=vx*dt;this.y+=vy*dt;
+  if(this.x>W+160)this.x=-160;if(this.x<-160)this.x=W+160;
+  this.y=Math.max(H*.17,Math.min(H*.84,this.y))
+ }
+ draw(){
+  const sp=species[this.s],s=this.size;
+  ctx.save();ctx.translate(this.x,this.y);ctx.scale(this.dir,1);
+  ctx.shadowColor="rgba(0,0,0,.22)";ctx.shadowBlur=9;ctx.shadowOffsetY=4;
+
+  if(sp.shape==="jelly"){drawJelly(sp,s);ctx.restore();return}
+  if(sp.shape==="turtle"){drawTurtle(sp,s);ctx.restore();return}
+  if(sp.shape==="whale"){drawWhale(sp,s);ctx.restore();return}
+  if(sp.shape==="manta"){drawManta(sp,s);ctx.restore();return}
+  if(sp.shape==="dolphin"){drawDolphin(sp,s);ctx.restore();return}
+
+  const g=ctx.createLinearGradient(-s*.65,-s*.3,s*.65,s*.3);
+  g.addColorStop(0,sp.accent);g.addColorStop(.28,sp.body);g.addColorStop(1,shade(sp.body,-28));
+  ctx.fillStyle=g;
+
+  if(sp.shape==="puffer"){ctx.beginPath();ctx.arc(0,0,s*.42,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle=sp.accent;ctx.lineWidth=2;
+   for(let i=0;i<13;i++){const a=i/13*Math.PI*2;ctx.beginPath();ctx.moveTo(Math.cos(a)*s*.36,Math.sin(a)*s*.36);ctx.lineTo(Math.cos(a)*s*.52,Math.sin(a)*s*.52);ctx.stroke()}
+  }else if(sp.shape==="slim"){ctx.beginPath();ctx.ellipse(0,0,s*.7,s*.22,0,0,Math.PI*2);ctx.fill()}
+  else{ctx.beginPath();ctx.ellipse(0,0,s*.64,s*.34,0,0,Math.PI*2);ctx.fill()}
+
+  ctx.fillStyle=sp.body;ctx.beginPath();ctx.moveTo(-s*.53,0);ctx.lineTo(-s*.98,-s*.35);ctx.lineTo(-s*.82,0);ctx.lineTo(-s*.98,s*.35);ctx.closePath();ctx.fill();
+
+  if(sp.shape==="clown"){ctx.strokeStyle=sp.accent;ctx.lineWidth=s*.11;[-.22,.17].forEach(x=>{ctx.beginPath();ctx.moveTo(s*x,-s*.27);ctx.lineTo(s*(x-.03),s*.27);ctx.stroke()})}
+  if(sp.shape==="tang"){ctx.strokeStyle="#152652";ctx.lineWidth=s*.06;ctx.beginPath();ctx.arc(-s*.05,0,s*.3,-1.15,1.15);ctx.stroke()}
+  if(sp.shape==="slim"){ctx.strokeStyle=sp.accent;ctx.lineWidth=s*.07;ctx.beginPath();ctx.moveTo(-s*.4,0);ctx.lineTo(s*.36,0);ctx.stroke()}
+  if(sp.shape==="lion"){ctx.strokeStyle=sp.accent;ctx.lineWidth=2;for(let i=-3;i<=3;i++){ctx.beginPath();ctx.moveTo(-s*.16+i*4,-s*.23);ctx.lineTo(-s*.2+i*7,-s*.58);ctx.stroke()}}
+  if(sp.shape==="betta"||sp.shape==="gold"){ctx.fillStyle=sp.accent;ctx.globalAlpha=.82;ctx.beginPath();ctx.moveTo(-s*.18,s*.2);ctx.quadraticCurveTo(-s*.05,s*.72,s*.34,s*.42);ctx.quadraticCurveTo(s*.08,s*.23,-s*.18,s*.2);ctx.fill();ctx.globalAlpha=1}
+
+  ctx.shadowBlur=0;ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(s*.3,-s*.08,s*.085,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#10212a";ctx.beginPath();ctx.arc(s*.32,-s*.08,s*.045,0,Math.PI*2);ctx.fill();
+
+  if(sp.shape==="glow"){ctx.strokeStyle="rgba(100,255,255,.9)";ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,s*.82,0,Math.PI*2);ctx.stroke()}
+  ctx.restore()
+ }
+}
+function drawJelly(sp,s){ctx.fillStyle=sp.body;ctx.globalAlpha=.82;ctx.beginPath();ctx.arc(0,0,s*.4,Math.PI,0);ctx.lineTo(s*.4,s*.1);ctx.quadraticCurveTo(0,s*.3,-s*.4,s*.1);ctx.closePath();ctx.fill();ctx.strokeStyle=sp.accent;ctx.lineWidth=3;for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(i*s*.14,s*.1);ctx.bezierCurveTo(i*s*.1,s*.36,(i+1)*s*.1,s*.5,i*s*.08,s*.68);ctx.stroke()}}
+function drawTurtle(sp,s){ctx.fillStyle=sp.body;ctx.beginPath();ctx.ellipse(0,0,s*.48,s*.34,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=sp.accent;ctx.beginPath();ctx.arc(s*.52,-s*.03,s*.16,0,Math.PI*2);ctx.fill();[[-.1,-.22],[.05,.24],[-.32,.22],[-.35,-.2]].forEach(p=>{ctx.beginPath();ctx.ellipse(p[0]*s,p[1]*s,s*.22,s*.09,p[1]>0?.4:-.4,0,Math.PI*2);ctx.fill()})}
+function drawWhale(sp,s){ctx.fillStyle=sp.body;ctx.beginPath();ctx.ellipse(0,0,s*.8,s*.32,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(-s*.62,0);ctx.lineTo(-s*1.05,-s*.3);ctx.lineTo(-s*.9,0);ctx.lineTo(-s*1.05,s*.3);ctx.closePath();ctx.fill();ctx.fillStyle=sp.accent;for(let i=0;i<13;i++){ctx.beginPath();ctx.arc(-s*.34+i*s*.075,-s*.1+(i%2)*6,2.1,0,Math.PI*2);ctx.fill()}}
+function drawManta(sp,s){ctx.fillStyle=sp.body;ctx.beginPath();ctx.moveTo(s*.65,0);ctx.quadraticCurveTo(0,-s*.62,-s*.72,-s*.18);ctx.quadraticCurveTo(-s*.25,0,-s*.72,s*.18);ctx.quadraticCurveTo(0,s*.62,s*.65,0);ctx.fill();ctx.strokeStyle=sp.accent;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-s*.1,0);ctx.lineTo(-s*.95,0);ctx.stroke()}
+function drawDolphin(sp,s){ctx.fillStyle=sp.body;ctx.beginPath();ctx.ellipse(0,0,s*.72,s*.27,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(s*.45,-s*.1);ctx.lineTo(s*.85,-s*.03);ctx.lineTo(s*.48,s*.05);ctx.fill();ctx.beginPath();ctx.moveTo(-s*.55,0);ctx.lineTo(-s*.95,-s*.25);ctx.lineTo(-s*.8,0);ctx.lineTo(-s*.95,s*.25);ctx.closePath();ctx.fill()}
+
+function addFish(s,x,y,free=false){
+ if(fishes.length>=100+state.tankLevel*35){show("水槽を拡張しよう");return}
+ const f=new Fish(s,x,y);fishes.push(f);
+ if(!state.seen.includes(s)){state.seen.push(s);show("NEW！ "+species[s].name)}
+ if(!free){state.coins+=species[s].value;state.xp+=5}
+ sparkles.push({x:f.x,y:f.y,r:3,a:1});
+ texts.push({x:f.x,y:f.y,a:1,text:"+"+species[s].value});
+ updateUI();beep(600+s*28)
+}
+function show(m){$("toast").textContent=m;$("toast").classList.add("show");clearTimeout(show.t);show.t=setTimeout(()=>$("toast").classList.remove("show"),950)}
+function beep(freq=660){if(muted)return;try{audioCtx||=new(AudioContext||webkitAudioContext)();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.frequency.value=freq;o.frequency.exponentialRampToValueAtTime(freq*1.3,audioCtx.currentTime+.08);g.gain.value=.03;g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.14);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+.15)}catch(_){}}
+function updateUI(){
+ let need=120+state.level*40;
+ while(state.xp>=need){state.xp-=need;state.level++;state.gems+=1;show("Lv."+state.level+"！ ダイヤ+1");need=120+state.level*40}
+ $("coins").textContent=Math.floor(state.coins).toLocaleString();
+ $("gems").textContent=state.gems;
+ $("count").textContent=fishes.length;
+ $("level").textContent=state.level;
+ $("tankLevel").textContent=state.tankLevel;
+ $("xpbar").style.width=Math.min(100,state.xp/need*100)+"%"
+}
+function openModal(title,body){$("modalTitle").textContent=title;$("modalBody").innerHTML=body;$("modal").classList.add("open")}
+
+canvas.addEventListener("pointerdown",e=>{const r=canvas.getBoundingClientRect();state.totalTaps++;state.missions.tap++;addFish(Math.floor(Math.random()*4),e.clientX-r.left,e.clientY-r.top)},{passive:true});
+
+$("feed").onclick=()=>{if(state.coins<20){show("20コイン必要");return}state.coins-=20;state.missions.feed++;for(let i=0;i<14;i++)food.push({x:W*.15+Math.random()*W*.7,y:H*.22+Math.random()*H*.32,vy:15+Math.random()*20,life:8});show("魚が集まってきた！");updateUI()};
+$("gacha").onclick=()=>{openModal("プレミアムガチャ",'<div class="hero">🎁</div><p>300コイン、または3ダイヤで1匹。伝説・幻も入ってる！</p><button id="coinDraw" class="action">🪙300で引く</button><button id="gemDraw" class="action">💎3で引く</button>');
+ const draw=costType=>{if(costType==="coin"){if(state.coins<300)return show("300コイン必要");state.coins-=300}else{if(state.gems<3)return show("3ダイヤ必要");state.gems-=3}
+ state.missions.gacha++;const r=Math.random();let s=r<.01?14:r<.025?13:r<.055?11:r<.12?(9+Math.floor(Math.random()*4)):4+Math.floor(Math.random()*5);addFish(s,W*.55,H*.42,true);$("modal").classList.remove("open");updateUI()};
+ setTimeout(()=>{$("coinDraw").onclick=()=>draw("coin");$("gemDraw").onclick=()=>draw("gem")},0)};
+$("book").onclick=()=>openModal("魚図鑑 "+state.seen.length+"/"+species.length,'<div class="grid">'+species.map(sp=>`<div class="card ${state.seen.includes(sp.id)?"":"locked"}"><span class="badge">${sp.rarity}</span><div class="name">${state.seen.includes(sp.id)?sp.name:"？？？"}</div><div class="small">1匹 ${sp.value}コイン</div></div>`).join("")+"</div>");
+$("daily").onclick=()=>{const today=new Date().toISOString().slice(0,10),rw=[50,80,120,160,220,300,500];openModal("デイリーボーナス",'<div class="reward">'+rw.map((r,i)=>`<div class="day ${i<state.streak?"done":""}">${i+1}日<br>🪙${r}</div>`).join("")+`</div><button id="claim" class="action">${state.lastDaily===today?"受取済み":"受け取る"}</button>`);setTimeout(()=>$("claim").onclick=()=>{if(state.lastDaily===today)return show("今日は受取済み");const v=rw[Math.min(state.streak,6)];state.coins+=v;state.streak=(state.streak+1)%7;state.lastDaily=today;show(v+"コイン獲得");updateUI();save();$("modal").classList.remove("open")},0)};
+$("upgrade").onclick=()=>{const cost=250*state.upgrade;if(state.coins<cost)return show(cost+"コイン必要");state.coins-=cost;state.upgrade++;fishes.forEach(f=>f.speed*=1.05);show("泳ぐ速さ Lv."+state.upgrade);updateUI()};
+$("expand").onclick=()=>{const cost=800*state.tankLevel;if(state.coins<cost)return show(cost+"コイン必要");state.coins-=cost;state.tankLevel++;show("水槽Lv."+state.tankLevel+"！");updateUI()};
+$("mission").onclick=()=>{const items=[["100回タップ",state.missions.tap,100,100],["エサを5回",state.missions.feed,5,150],["ガチャを3回",state.missions.gacha,3,2]];openModal("ミッション",items.map((m,i)=>`<div class="shopRow"><div><b>${m[0]}</b><div class="small">${Math.min(m[1],m[2])}/${m[2]}</div></div><button id="m${i}" ${m[1]<m[2]?"disabled":""}>受取</button></div>`).join(""));setTimeout(()=>items.forEach((m,i)=>{const b=$("m"+i);if(b&&!b.disabled)b.onclick=()=>{if(i<2)state.coins+=m[3];else state.gems+=m[3];state.missions[["tap","feed","gacha"][i]]=0;show("報酬獲得");updateUI();$("modal").classList.remove("open")}}),0)};
+$("shop").onclick=()=>openModal("ショップ",`<div class="shopRow"><div><b>コイン袋</b><div class="small">ダイヤ5個で1000コイン</div></div><button id="buyCoins">交換</button></div><div class="shopRow"><div><b>限定背景</b><div class="small">次回アップデート予定</div></div><button disabled>準備中</button></div>`);
+setTimeout(()=>{document.addEventListener("click",e=>{if(e.target&&e.target.id==="buyCoins"){if(state.gems<5)return show("ダイヤ5個必要");state.gems-=5;state.coins+=1000;show("1000コイン獲得");updateUI();$("modal").classList.remove("open")}})},0);
+$("theme").onclick=()=>{state.theme=(state.theme+1)%3;show(["昼の海","深い海","夜の海"][state.theme]);save()};
+$("sound").onclick=e=>{muted=!muted;e.currentTarget.querySelector(".ico").textContent=muted?"🔇":"🔊"};
+$("closeModal").onclick=()=>$("modal").classList.remove("open");
+$("modal").addEventListener("pointerdown",e=>{if(e.target===$("modal"))$("modal").classList.remove("open")});
+
+function bg(t){
+ const themes=[["#85e0ff","#15a8d6","#03496f"],["#6ed1ff","#0a86bc","#042f58"],["#66c8ff","#0879a9","#021f3f"]];
+ const th=themes[state.theme % themes.length];
+ const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,th[0]);g.addColorStop(.2,th[1]);g.addColorStop(1,th[2]);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ ctx.globalAlpha=.12;ctx.fillStyle="#fff";for(let i=0;i<7;i++){const x=i*W/6-50+Math.sin(t*.0003+i)*30;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+W*.09,H);ctx.lineTo(x+W*.2,H);ctx.lineTo(x+W*.07,0);ctx.fill()}ctx.globalAlpha=1;
+ ctx.fillStyle="#e6c780";ctx.beginPath();ctx.moveTo(0,H*.88);for(let x=0;x<=W;x+=30)ctx.lineTo(x,H*.88+Math.sin(x*.03+t*.0006)*7);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+ for(let i=0;i<15;i++){const x=(i+.3)*W/15,h=32+(i%5)*16;ctx.strokeStyle=i%2?"#168052":"#269b60";ctx.lineWidth=7;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(x,H*.93);ctx.quadraticCurveTo(x+Math.sin(t*.001+i)*15,H*.93-h*.55,x+Math.sin(t*.001+i)*10,H*.93-h);ctx.stroke()}
+}
+function loop(now){
+ const dt=Math.min((now-last)/1000,.034);last=now;
+ if(Math.random()<dt*1.8)bubbles.push({x:Math.random()*W,y:H+8,r:2+Math.random()*7,vy:20+Math.random()*30,a:.5});
+ bubbles.forEach(b=>{b.y-=b.vy*dt;b.x+=Math.sin(now*.002+b.y*.02)*7*dt});bubbles=bubbles.filter(b=>b.y>-20);
+ food.forEach(f=>{f.y+=f.vy*dt;f.life-=dt});food=food.filter(f=>f.life>0&&f.y<H*.84);
+ fishes.forEach(f=>f.update(dt,now));
+ sparkles.forEach(s=>{s.r+=24*dt;s.a-=1.7*dt});sparkles=sparkles.filter(s=>s.a>0);
+ texts.forEach(t=>{t.y-=22*dt;t.a-=1.2*dt});texts=texts.filter(t=>t.a>0);
+ bg(now);
+ ctx.strokeStyle="rgba(255,255,255,.62)";ctx.lineWidth=1.5;bubbles.forEach(b=>{ctx.globalAlpha=b.a;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.stroke()});ctx.globalAlpha=1;
+ food.forEach(f=>{ctx.fillStyle="#f5b163";ctx.beginPath();ctx.arc(f.x,f.y,4,0,Math.PI*2);ctx.fill()});
+ fishes.forEach(f=>f.draw());
+ sparkles.forEach(s=>{ctx.globalAlpha=s.a;ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.stroke()});
+ ctx.font="bold 15px system-ui";ctx.textAlign="center";texts.forEach(t=>{ctx.globalAlpha=t.a;ctx.fillStyle="#ffe376";ctx.fillText(t.text,t.x,t.y)});ctx.globalAlpha=1;
+ requestAnimationFrame(loop)
+}
+
+if(state.fish.length)fishes=state.fish.map(o=>new Fish(o.s,o.x*W,o.y*H,o.size,o.dir));
+else[0,0,1,1,2,2,3,0].forEach((s,i)=>fishes.push(new Fish(s,W*(.1+i*.11),H*(.3+(i%3)*.16),34+Math.random()*22,i%2?1:-1)));
+
+const elapsed=Math.max(0,Date.now()-(state.lastSave||Date.now()));
+const rate=Math.max(1,Math.floor(fishes.reduce((a,f)=>a+species[f.s].value,0)/20));
+const offline=Math.min(3000,Math.floor(elapsed/60000)*rate);
+if(offline>0){state.coins+=offline;setTimeout(()=>show("放置報酬 "+offline+"コイン！"),650)}
+updateUI();requestAnimationFrame(loop);
+
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;$("installBtn").style.display="block"});
+$("installBtn").onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$("installBtn").style.display="none"};
+if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(()=>{});
+})();
+</script>
+</body>
+</html>

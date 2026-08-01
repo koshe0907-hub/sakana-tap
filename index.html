@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#062d4d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>さかなタップ！Ver.9</title>
+<title>さかなタップ！Ver.10</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#031d32;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;touch-action:none}
@@ -64,13 +64,18 @@ button .ico{display:block;font-size:22px;margin-bottom:2px}
 .gachaOrb{width:116px;height:116px;margin:12px auto;border-radius:50%;background:radial-gradient(circle at 36% 28%,#fff,#8defff 14%,#166ed0 45%,#2e1a8c 75%);box-shadow:0 0 24px #6ef1ff,0 0 60px #1674ff;display:grid;place-items:center;font-size:46px;animation:orb 1.6s ease-in-out infinite alternate}
 @keyframes orb{to{transform:scale(1.06) rotate(4deg);box-shadow:0 0 34px #9ff8ff,0 0 90px #315dff}}
 @media(min-width:700px){.bottom{left:50%;transform:translateX(-50%);width:650px}.side{right:calc(50% - 360px)}.grid{grid-template-columns:repeat(4,1fr)}}
+
+.movingFish{position:absolute;z-index:8;left:-180px;width:var(--size);top:var(--top);animation:realSwim var(--speed) linear infinite;animation-delay:var(--delay);filter:drop-shadow(0 8px 7px rgba(0,0,0,.3));pointer-events:none;will-change:transform,left}
+.movingFish svg{width:100%;display:block;animation:fishBob 2.1s ease-in-out infinite alternate}
+@keyframes realSwim{0%{left:-190px;transform:scaleX(var(--dir))}100%{left:110vw;transform:scaleX(var(--dir))}}
+@keyframes fishBob{to{transform:translateY(-9px) rotate(1.5deg)}}
 </style>
 </head>
-<body>
+<body><div id="fishLayer" aria-hidden="true"></div>
 <div id="world"></div><div id="shade"></div><div id="caustics"></div><div id="bubbles" class="bubbles"></div>
 
 <div class="top">
-  <div class="glass brand"><b>さかなタップ！</b><small>光る海で、伝説の魚を集めよう</small></div>
+  <div class="glass brand"><b>さかなタップ！</b><small>光る海で、自分だけの水族館</small></div>
   <div class="wallet">
     <div class="glass counter">🪙 <span id="coins">0</span></div>
     <div class="glass counter">💎 <span id="gems">0</span></div>
@@ -80,7 +85,7 @@ button .ico{display:block;font-size:22px;margin-bottom:2px}
 <div class="levelBox">
   <div class="levelTrack"><div id="levelFill" class="levelFill"></div></div>
   Lv.<span id="level">1</span>　🐟 <span id="fishCount">0</span>
-  <div class="income">自動収益 ＋<span id="income">1</span>/分</div>
+  <div class="income">放置収益 ＋<span id="income">1</span>/分</div>
 </div>
 
 <div class="side">
@@ -103,18 +108,27 @@ button .ico{display:block;font-size:22px;margin-bottom:2px}
 (()=>{
 "use strict";
 const $=id=>document.getElementById(id);
+const fishLayer=document.getElementById("fishLayer");
+const fishSvgs=[
+`<svg viewBox="0 0 220 110" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="a" x1="0" x2="1"><stop stop-color="#ffb14a"/><stop offset=".55" stop-color="#ff6a21"/><stop offset="1" stop-color="#c93d12"/></linearGradient></defs><path d="M42 55 5 22 18 55 5 88z" fill="#f15b24"/><ellipse cx="108" cy="55" rx="78" ry="38" fill="url(#a)"/><path d="M82 21c-5 22-5 46 0 68M126 19c-6 22-6 50 0 72" stroke="#fff7e8" stroke-width="16"/><path d="M84 21c-5 22-5 46 0 68M128 19c-6 22-6 50 0 72" stroke="#282828" stroke-width="3" opacity=".75"/><ellipse cx="165" cy="43" rx="10" ry="10" fill="white"/><circle cx="168" cy="43" r="5" fill="#111"/></svg>`,
+`<svg viewBox="0 0 220 110" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="b" x1="0" x2="1"><stop stop-color="#39b8ff"/><stop offset=".55" stop-color="#1767d7"/><stop offset="1" stop-color="#0b2e83"/></linearGradient></defs><path d="M42 55 5 18 19 55 5 92z" fill="#ffd83d"/><ellipse cx="110" cy="55" rx="77" ry="38" fill="url(#b)"/><path d="M70 34c25 2 53 14 80 43" stroke="#152b6e" stroke-width="12" fill="none"/><path d="M147 22c16 9 27 22 37 37-10 8-19 19-26 30" stroke="#ffd83d" stroke-width="10" fill="none"/><ellipse cx="168" cy="43" rx="10" ry="10" fill="white"/><circle cx="171" cy="43" r="5" fill="#111"/></svg>`,
+`<svg viewBox="0 0 220 110" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="c" x1="0" x2="1"><stop stop-color="#fff18d"/><stop offset=".5" stop-color="#ffd629"/><stop offset="1" stop-color="#e6a900"/></linearGradient></defs><path d="M42 55 5 20 18 55 5 90z" fill="#dca300"/><ellipse cx="110" cy="55" rx="76" ry="38" fill="url(#c)"/><path d="M86 20c11-18 34-19 48 0" fill="#f4c713"/><path d="M92 90c14 13 29 12 42-2" fill="#d6a000"/><ellipse cx="169" cy="43" rx="10" ry="10" fill="white"/><circle cx="172" cy="43" r="5" fill="#111"/></svg>`,
+`<svg viewBox="0 0 220 110" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="d" x1="0" x2="1"><stop stop-color="#ff809c"/><stop offset=".55" stop-color="#a447d3"/><stop offset="1" stop-color="#4820a7"/></linearGradient></defs><path d="M48 55 6 10 18 55 6 100z" fill="#7d32c4"/><ellipse cx="112" cy="55" rx="73" ry="35" fill="url(#d)"/><path d="M95 20c9-22 31-28 49-8-16 8-27 13-49 8z" fill="#5b2eb7"/><ellipse cx="169" cy="43" rx="10" ry="10" fill="white"/><circle cx="172" cy="43" r="5" fill="#111"/></svg>`
+];
+for(let i=0;i<14;i++){const f=document.createElement('div');f.className='movingFish';f.style.setProperty('--size',(70+Math.random()*85)+'px');f.style.setProperty('--top',(18+Math.random()*61)+'%');f.style.setProperty('--speed',(10+Math.random()*13)+'s');f.style.setProperty('--delay',(-Math.random()*18)+'s');f.style.setProperty('--dir',Math.random()<.2?-1:1);f.innerHTML=fishSvgs[i%fishSvgs.length];fishLayer.appendChild(f);}
+
 const fishList=[
 ["カクレクマノミ","ノーマル"],["ナンヨウハギ","ノーマル"],["キイロハギ","ノーマル"],["ツノダシ","ノーマル"],
 ["ネオンテトラ","レア"],["ミノカサゴ","レア"],["フグ","レア"],["クラゲ","スーパーレア"],
 ["ウミガメ","伝説"],["ジンベエザメ","伝説"],["マンタ","伝説"],["イルカ","幻"],["黄金の魚","幻"],["深海ルミナ","幻"]
 ];
 const defaults={coins:300,gems:12,fish:16,xp:0,level:1,lastDaily:"",seen:[0,1,2,3],lastSave:Date.now(),tap:0,gacha:0,feed:0};
-let state=Object.assign({},defaults,JSON.parse(localStorage.getItem("sakanaV9")||"null")||{});
+let state=Object.assign({},defaults,JSON.parse(localStorage.getItem("sakanaV10")||"null")||{});
 let muted=false,audio=null;
 
 for(let i=0;i<28;i++){const b=document.createElement("i");b.className="bubble";const s=5+Math.random()*18;b.style.width=b.style.height=s+"px";b.style.left=Math.random()*100+"%";b.style.animationDuration=(7+Math.random()*11)+"s";b.style.animationDelay=(-Math.random()*15)+"s";b.style.setProperty("--drift",(Math.random()*90-45)+"px");$("bubbles").appendChild(b)}
 
-function save(){state.lastSave=Date.now();localStorage.setItem("sakanaV9",JSON.stringify(state))}
+function save(){state.lastSave=Date.now();localStorage.setItem("sakanaV10",JSON.stringify(state))}
 function need(){return 140+state.level*45}
 function income(){return Math.max(1,Math.floor(state.fish/6))}
 function ui(){
